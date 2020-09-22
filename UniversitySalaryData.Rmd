@@ -1,0 +1,178 @@
+---
+title: "SalaryResearch"
+author: "Ethan Mitten"
+date: "4/16/2020"
+output: html_document
+---
+
+```{r loadpackages}
+library(tidyverse)
+library(modelr)
+library(cvTools)
+library(glmnet)
+library(readr)
+library(maps)
+```
+
+```{r data}
+RegionSalaries <- read.csv("~/Desktop/Python Projects/UniversitySalaryData/salaries-by-region.csv")
+collegetypesalaries <- read.csv("~/Desktop/Python Projects/UniversitySalaryData/salaries-by-college-type.csv")
+DegreeSalaries <- read.csv("~/Desktop/Python Projects/UniversitySalaryData/degrees-that-pay-back.csv")
+household_median_income_2017 <- read.csv("~/Downloads/garyhoov-household-income-by-state/household_median_income_2017.csv")
+IncomeMapDataTing <- read.csv("~/Desktop/RStudio Projects/UniversitySalaryData/UniversitySalaryData/RStudioSoccerDataProject.csv", stringsAsFactors=FALSE)
+```
+
+```{r cleaning}
+RegionSalaries$Starting.Median.Salary <- as.numeric(gsub('[$,]', '', RegionSalaries$Starting.Median.Salary))
+RegionSalaries$Mid.Career.Median.Salary<- as.numeric(gsub('[$,]', '', RegionSalaries$Mid.Career.Median.Salary))
+RegionSalaries$Mid.Career.10th.Percentile.Salary<- as.numeric(gsub('[$,]', '', RegionSalaries$Mid.Career.10th.Percentile.Salary))
+RegionSalaries$Mid.Career.25th.Percentile.Salary<- as.numeric(gsub('[$,]', '', RegionSalaries$Mid.Career.25th.Percentile.Salary))
+RegionSalaries$Mid.Career.75th.Percentile.Salary<- as.numeric(gsub('[$,]', '', RegionSalaries$Mid.Career.75th.Percentile.Salary))
+RegionSalaries$Mid.Career.90th.Percentile.Salary<- as.numeric(gsub('[$,]', '', RegionSalaries$Mid.Career.90th.Percentile.Salary))
+RegionSalaries <- na.omit(RegionSalaries)
+```
+
+
+```{r startingmediansalarygraphoverview}
+smsograph <- ggplot(data=RegionSalaries) +
+  geom_point(mapping = aes(x=Region, y=Starting.Median.Salary)) 
+smsograph
+```
+#Looking at the graph by region it looks like graduates in the Northeastern region have a better chance of having a higher starting median salary than any other region. California has a high starting median salary, and it's range actually does not extend as far down as the Northeastern region. The Southern region looks to compete a little bit with starting median salary, but has a lot of universities that take up space below 50,000. The Western region and Midwestern region both are fairly low, but consistent on starting median salary. 
+
+
+```{r midmediansalarygraphoverview}
+mmsograph <- ggplot(data=RegionSalaries) +
+  geom_point(mapping = aes(x=Region, y=Mid.Career.Median.Salary)) 
+mmsograph
+```
+#When people get into the middle of their career the median salary increases for every region. Besides that all the regions follow about the same pattern.
+
+```{r experiment}
+library(ggplot2)
+library(maptools)
+library(mapdata)
+library(ggthemes)
+library(tibble)
+library(viridis)
+library(viridisLite)
+library(mapproj)
+```
+
+```{r work}
+us <- map_data("state")
+map <- ggplot()
+map <- map + geom_map(data=us, map=us,
+                    aes(long, lat, map_id=region),
+                    color="#2b2b2b", fill=NA, size=0.15)
+map <- map + geom_map(data=IncomeMapDataTing, map=us,
+                    aes(fill=income,
+                        map_id=region),
+                    color="white", size=0.15)
+map <- map + scale_fill_viridis(name="Income")
+map <- map + coord_map("polyconic")
+map <- map + theme_map()
+map <- map + theme(plot.margin=margin(20,20,20,20))
+map <- map + theme(legend.position=c(0.85, 0.2))
+map
+```
+#This graph gives insight of what income per region looks like. A couple things can be concluded by looking at this graph. The first is that the Southern region in comparison with other region has low median income. Also, California and a lot of Western states show that they have a pretty high median income. The coastal regions in the east are also very high in median salary. The Midwest in relation to other regions is fairly low in median income except for the northern states like Wisconsin. If we were just making the correlation that university starting median salary was related to the respective state's income we would see higher starting median salaries in states like Colorado compared to the region, but from a couple examples I will show that it is not that simple.  
+
+```{r examplesofabove}
+NevCol = RegionSalaries[c(33,39),]
+RolWis = RegionSalaries[c(63,69),]
+LSUTCU = RegionSalaries[c(139,160),]
+head(NevCol)
+head(RolWis)
+head(LSUTCU)
+```
+```{r specificstatesalaries}
+WestExceptions = IncomeMapDataTing[c(27,6),]
+MidExceptions = IncomeMapDataTing[c(24,48),]
+SouthExceptions = IncomeMapDataTing[c(17,42),]
+head(WestExceptions)
+head(MidExceptions)
+head(SouthExceptions)
+```
+#These are 3 exceptions where the state income for these states are way different, but the income of the respective universities are less for the states with higher income.
+
+#We want to incorporate the other data that has been imported which looks at starting salary per major and see what majors each of these exception universities is most known for to see if we can get a match on what is causing the difference. We will first take a look at the first exception which deals with University of Nevada, Reno and Colorado State University. From US News the University of Nevada, Reno is most known for Health Professions and Related Programs; Engineering; Biological and Biomedical Sciences; and Social Sciences. For comparison purposes we will take the top 4 majors at Colorado State University provided by the Universities website. These majors are Business Administration, Psychology, Biological Science, and Health and Exercise Science. Lets see how these majors compare.
+
+```{r westmajorcomparison}
+WestMajor = DegreeSalaries[c(41,11,49,8,47,42),]
+head(WestMajor)
+```
+#We took out Biology because it related to both universities and we see that the top 3 majors in this chart are relevant to the University of Nevada and the bottom 3 are associated with Colorado State Univeristy. This information will give an overview to our answer. Nutrition does not completely define all the majors associated with Health and Exercise Science and Nursing does not house all the Health Professions, but given the dataset these majors are the most appropriate. It can be seen that Nursing and Engineering gives students coming out of college a higher starting median salary than the majors that Colorado State is most known for, and these numbers are not just by a little, but these are big differences. The amount of students taking these majors could be the reason why students at University of Nevada, Reno are way more likely to start with a higher salary than students coming out of Colorado State University even though the state median income is so much higher in Colorado.
+
+#The next example we want to look at is the difference between the University of Missouri--Rolla and the University of Wisconsin--Madison. The University of Missouri--Rolla or more known as S&T University is most known for engineering majors whereas the University of Wisconsin--Madison is most known for economics, biology and computer science. Based off of the last example we can see where this is probably going to go with S&T being heavy in engineering, but we will show it just too verify.
+
+```{r midmajorcomparison}
+MidMajor = DegreeSalaries[c(11,31,39,18,7,14),]
+head(MidMajor)
+```
+#Like we expected S&T University has a higher mean for their top majors than UWM does. However, it is way closer than the previous example with economics and computer science having high starting median salaries. This is interesting because the starting median salaries of these majors are almost the same as engineering which is what S&T is most known for. However, with Biology being a big major for students at UMW there is the decrease in overal mean starting salary. After this last example this will start us off on the next phase of this exploration where we will then compare these outlier universites and compare them to universities with similar majors. For now lets verify the same result with the southern region.
+
+#The last colleges that were outliers were LSU and TCU. LSU most popular majors are Business Management, Marketing, Engineering, and Education. TCU most popular majors are Business Management, Marketing, Communication, Journalism.
+
+```{r southmajorcomparison}
+SouthMajor = DegreeSalaries[c(8,37,11,19,12,35),]
+head(SouthMajor)
+```
+#The top two majors both Universities share and so we look at the engineering and education of LSU and the communication and journalism of TCU. Again engineering is pulling the weight of this comparison, but this one is so interesting because of the similarities in there top majors. Is engineering really causing this huge difference between the universities starting median salary?
+
+```{r similarities}
+ColoUniv <- RegionSalaries[c(24,39),]
+ColoUniv
+```
+#These two Universities both have similar majors at play with some more specific majors at play, but University of Colorado - Boulder is actually doing way better compared to CSU. Does this mean that CSU just is not doing as well as other schools? Perhaps this data could be representing that students statistically do not have as high of chance of have a higher starting salary than others, but there are so many variables at play that the research question might be a little too broad too comprehend. Let's try and look at regions again.
+
+#We would like to know the spread of each of these regions by using a boxplot to see if perhaps some of the regions are highly effected by a couple universities.
+
+```{r regionboxplot}
+regionboxplot <- ggplot(data = RegionSalaries) +
+  geom_boxplot(mapping = aes(x=Region, y= Starting.Median.Salary))
+regionboxplot
+```
+
+#From the graph California actually has a higher median than the Northeastern region. The Northeastern region has more Universities stretching into the above 55,000 dollar range than anyone else though and so it could be said that if you put a university in the Northeastern region there is a higher chance of students making a higher salary coming out of college than if they went anywhere else. However, this is not just a simple argument and there are many factors that effect the starting median salary. How high are the universities on the list rated? Could it be that the universities surveyed were considered more presitigous in the Northeastern region pulling the weight of the Northeastern region. The IVY League schools are known for their excellence so what if we try taking out just the ivy league schools and doing the boxplot again?
+
+```{r notivy}
+notivy = RegionSalaries[-c(221,222,224,225,226,232,234,236),]
+```
+
+```{r notivyboxplot}
+notivyboxplot <- ggplot(data = RegionSalaries) +
+  geom_boxplot(mapping = aes(x=Region, y= Starting.Median.Salary))
+notivyboxplot
+```
+#Interesting enough when we took out all of the Ivy League schools from the dataset the Northeastern region still held firm, and is still strongly competing with California and all of the prestigious schools it has to offer. Now I'm curious how many observations are being used for each region.
+
+```{r countingregionobservations}
+count(RegionSalaries, Region)
+```
+#Considering that most of the schools are regarded as the best in their region it nows is realized that their is no surprise that the Northeastern region did not budge when we took out 8 schools. I did not matter that they were in the Ivy League because there were so many other presitigous schools in the region that taking those out did not effect the graph in the slightest. Now although there are different ways to determining how good a school is because "good" is a very relative term we want to go and pick a randomized sample of 15 universities from each region, and then see how the boxplot will be affected. I will use a random number generator to pick ten numbers for each region, then compile them into a new dataset.
+
+```{r randomsample}
+randomsample = RegionSalaries[c(1,2,3,4,8,9,10,12,13,14,15,18,19,20,21,27,28,29,35,39,40,41,42,43,46,47,50,52,53,56,57,59,62,64,68,69,73,74,75,84,85,96,100,113,120,122,124,126,130,142,147,153,159,164,166,168,172,174,187,191,192,195,199,200,213,218,219,221,223,224,226,229,249,250,263),]
+
+```
+
+```{r countrandomsample}
+count(randomsample, Region)
+```
+
+```{r randomsampleboxplot}
+randomsampleboxplot <- ggplot(data = randomsample) +
+  geom_boxplot(mapping = aes(x=Region, y= Starting.Median.Salary))
+randomsampleboxplot
+```
+#Now that the data has equal observations for each region a few things can be observed and some conclusions can be drawn. Now that we have random samples taken the first thing that is noticed is that the Midwestern jumped way up. What can be concluded by this is that although the Midwest has less universities that are going to get you the highest starting median salary, this region overall has a lot of universities that set you up for great starting salaries.
+
+
+In conclusion, from looking over the data and using the datasets proved by Kaggle, there are too many factors at play to make any sort of answer to the question at play. There are just way too many factors at play to actually determine how to give students a successful median salary out of college in terms of what region or state they are attending college. Some colleges are liberal arts colleges and some are specifically concentrated on certain majors. Overall, going into this project it seemed like with this data I could gain insight to how universities are outdoing other universities in different categories, but like said there is just too much at play. From the data we can seem to conclude that there is no "sweet spot" if someone where wanting to found a university in the United States.
+
+
+
+
+
+
